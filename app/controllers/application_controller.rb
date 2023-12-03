@@ -198,7 +198,7 @@ class ApplicationController < ActionController::Base
 
   ##
   # wrap a web page in a timeout
-  def web_timeout(&block)
+  def web_timeout(render_options = {}, &block)
     Timeout.timeout(Settings.web_timeout, Timeout::Error, &block)
   rescue ActionView::Template::Error => e
     e = e.cause
@@ -206,13 +206,13 @@ class ApplicationController < ActionController::Base
     if e.is_a?(Timeout::Error) ||
        (e.is_a?(ActiveRecord::StatementInvalid) && e.message.include?("execution expired"))
       ActiveRecord::Base.connection.raw_connection.cancel
-      render :action => "timeout"
+      render({ :action => "timeout" }.merge(render_options))
     else
       raise
     end
   rescue Timeout::Error
     ActiveRecord::Base.connection.raw_connection.cancel
-    render :action => "timeout"
+    render({ :action => "timeout" }.merge(render_options))
   end
 
   ##

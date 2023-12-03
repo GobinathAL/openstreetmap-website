@@ -44,27 +44,29 @@ class ChangesetsController < ApplicationController
       require_oauth
       render :action => :history, :layout => map_layout
     else
-      changesets = conditions_nonempty(Changeset.all)
+      web_timeout :layout => false do
+        changesets = conditions_nonempty(Changeset.all)
 
-      if @params[:display_name]
-        changesets = if user.data_public? || user == current_user
-                       changesets.where(:user => user)
-                     else
-                       changesets.where("false")
-                     end
-      elsif @params[:bbox]
-        changesets = conditions_bbox(changesets, BoundingBox.from_bbox_params(params))
-      elsif @params[:friends] && current_user
-        changesets = changesets.where(:user => current_user.friends.identifiable)
-      elsif @params[:nearby] && current_user
-        changesets = changesets.where(:user => current_user.nearby)
+        if @params[:display_name]
+          changesets = if user.data_public? || user == current_user
+                         changesets.where(:user => user)
+                       else
+                         changesets.where("false")
+                       end
+        elsif @params[:bbox]
+          changesets = conditions_bbox(changesets, BoundingBox.from_bbox_params(params))
+        elsif @params[:friends] && current_user
+          changesets = changesets.where(:user => current_user.friends.identifiable)
+        elsif @params[:nearby] && current_user
+          changesets = changesets.where(:user => current_user.nearby)
+        end
+
+        changesets = changesets.where("changesets.id <= ?", @params[:max_id]) if @params[:max_id]
+
+        @changesets = changesets.order("changesets.id DESC").limit(20).preload(:user, :changeset_tags, :comments)
+
+        render :action => :index, :layout => false
       end
-
-      changesets = changesets.where("changesets.id <= ?", @params[:max_id]) if @params[:max_id]
-
-      @changesets = changesets.order("changesets.id DESC").limit(20).preload(:user, :changeset_tags, :comments)
-
-      render :action => :index, :layout => false
     end
   end
 
